@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { Cat, Heart, Info, Paw, Moon, Sun } from "lucide-react";
+import { Cat, Heart, Info, Paw, Moon, Sun, ChevronUp, Palette } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const catBreeds = [
   { name: "Siamese", description: "Known for their distinctive markings and vocal nature.", image: "https://upload.wikimedia.org/wikipedia/commons/2/25/Siam_lilacpoint.jpg" },
@@ -23,17 +26,57 @@ const catFacts = [
   "Cats have a third eyelid called the nictitating membrane.",
 ];
 
+const catQuizQuestions = [
+  {
+    question: "What is a group of cats called?",
+    options: ["A pride", "A clowder", "A pack", "A herd"],
+    correctAnswer: "A clowder"
+  },
+  {
+    question: "How many hours do cats typically sleep in a day?",
+    options: ["8-10 hours", "12-14 hours", "16-20 hours", "22-23 hours"],
+    correctAnswer: "16-20 hours"
+  },
+  {
+    question: "Which of these is NOT a cat breed?",
+    options: ["Siamese", "Persian", "Labrador", "Maine Coon"],
+    correctAnswer: "Labrador"
+  }
+];
+
+const themes = {
+  light: "bg-gradient-to-b from-blue-100 to-purple-100",
+  dark: "bg-gradient-to-b from-gray-800 to-gray-900",
+  nature: "bg-gradient-to-b from-green-100 to-emerald-200",
+  sunset: "bg-gradient-to-b from-orange-100 to-red-200",
+  ocean: "bg-gradient-to-b from-blue-200 to-cyan-100"
+};
+
 const Index = () => {
   const [likes, setLikes] = useState(0);
   const [currentFact, setCurrentFact] = useState(0);
   const [theme, setTheme] = useState("light");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [score, setScore] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentFact((prev) => (prev + 1) % catFacts.length);
     }, 5000);
-    return () => clearInterval(interval);
+
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleLike = () => {
@@ -44,12 +87,38 @@ const Index = () => {
     });
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleQuizAnswer = (answer) => {
+    if (answer === catQuizQuestions[currentQuestion].correctAnswer) {
+      setScore(score + 1);
+      toast({
+        title: "Correct!",
+        description: "Great job!",
+      });
+    } else {
+      toast({
+        title: "Incorrect",
+        description: `The correct answer was: ${catQuizQuestions[currentQuestion].correctAnswer}`,
+        variant: "destructive",
+      });
+    }
+
+    if (currentQuestion < catQuizQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      setQuizStarted(false);
+      toast({
+        title: "Quiz Completed!",
+        description: `Your score: ${score + (answer === catQuizQuestions[currentQuestion].correctAnswer ? 1 : 0)}/${catQuizQuestions.length}`,
+      });
+    }
   };
 
   return (
-    <div className={`min-h-screen p-8 transition-colors duration-300 ${theme === "light" ? "bg-gradient-to-b from-blue-100 to-purple-100" : "bg-gradient-to-b from-gray-800 to-gray-900"}`}>
+    <div className={`min-h-screen p-8 transition-colors duration-300 ${themes[theme]}`}>
       <Card className={`max-w-4xl mx-auto ${theme === "dark" ? "bg-gray-800 text-white" : ""}`}>
         <CardHeader>
           <motion.div
@@ -70,15 +139,20 @@ const Index = () => {
             <CarouselContent>
               {catBreeds.map((breed, index) => (
                 <CarouselItem key={index}>
-                  <motion.img
-                    src={breed.image}
-                    alt={breed.name}
-                    className="mx-auto object-cover w-full h-[400px] rounded-lg shadow-lg"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                  />
-                  <p className={`text-center mt-2 font-semibold ${theme === "dark" ? "text-gray-300" : ""}`}>{breed.name}</p>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <img
+                      src={breed.image}
+                      alt={breed.name}
+                      className="mx-auto object-cover w-full h-[400px] rounded-lg shadow-lg"
+                    />
+                    <div className={`text-center mt-2 ${theme === "dark" ? "text-gray-300" : ""}`}>
+                      <p className="font-semibold text-lg">{breed.name}</p>
+                      <p className="text-sm">{breed.description}</p>
+                    </div>
+                  </motion.div>
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -98,9 +172,10 @@ const Index = () => {
             </motion.p>
           </AnimatePresence>
           <Tabs defaultValue="characteristics" className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="characteristics">Characteristics</TabsTrigger>
               <TabsTrigger value="breeds">Popular Breeds</TabsTrigger>
+              <TabsTrigger value="quiz">Cat Quiz</TabsTrigger>
             </TabsList>
             <TabsContent value="characteristics">
               <Card className={theme === "dark" ? "bg-gray-700" : ""}>
@@ -149,6 +224,36 @@ const Index = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+            <TabsContent value="quiz">
+              <Card className={theme === "dark" ? "bg-gray-700" : ""}>
+                <CardHeader>
+                  <CardTitle className={theme === "dark" ? "text-white" : ""}>Cat Trivia Quiz</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!quizStarted ? (
+                    <Button onClick={() => setQuizStarted(true)}>Start Quiz</Button>
+                  ) : (
+                    <div>
+                      <h3 className={`text-lg font-semibold mb-4 ${theme === "dark" ? "text-white" : ""}`}>
+                        {catQuizQuestions[currentQuestion].question}
+                      </h3>
+                      <div className="space-y-2">
+                        {catQuizQuestions[currentQuestion].options.map((option, index) => (
+                          <Button
+                            key={index}
+                            onClick={() => handleQuizAnswer(option)}
+                            variant="outline"
+                            className="w-full text-left justify-start"
+                          >
+                            {option}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
           <p className={`text-xl ${theme === "dark" ? "text-gray-300" : "text-gray-700"} mb-6`}>
             Whether you're a cat owner or just an admirer, these furry friends continue to captivate us with their charm and personality.
@@ -157,13 +262,44 @@ const Index = () => {
             <Button onClick={handleLike} className="bg-pink-500 hover:bg-pink-600">
               <Heart className="mr-2 h-4 w-4" /> Like This Page
             </Button>
-            <Button onClick={toggleTheme} variant="outline" className={theme === "dark" ? "bg-gray-700 text-white" : ""}>
-              {theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
-              Toggle {theme === "light" ? "Dark" : "Light"} Mode
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className={theme === "dark" ? "bg-gray-700 text-white" : ""}>
+                  <Palette className="mr-2 h-4 w-4" /> Change Theme
+                </Button>
+              </DialogTrigger>
+              <DialogContent className={theme === "dark" ? "bg-gray-800 text-white" : ""}>
+                <DialogHeader>
+                  <DialogTitle>Choose a theme</DialogTitle>
+                  <DialogDescription>Select a theme for the cat page</DialogDescription>
+                </DialogHeader>
+                <RadioGroup defaultValue={theme} onValueChange={setTheme}>
+                  {Object.keys(themes).map((themeKey) => (
+                    <div key={themeKey} className="flex items-center space-x-2">
+                      <RadioGroupItem value={themeKey} id={themeKey} />
+                      <Label htmlFor={themeKey}>{themeKey.charAt(0).toUpperCase() + themeKey.slice(1)}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 right-8"
+          >
+            <Button onClick={scrollToTop} className="rounded-full p-3">
+              <ChevronUp className="h-6 w-6" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
